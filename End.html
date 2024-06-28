@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inverted Logic Leaper</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Press Start 2P', cursive;
+        }
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #score, #pauseButton, #menu, #endScreen, #themeSelector, #settings {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border-radius: 5px;
+        }
+        #score {
+     position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 5px 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border-radius: 5px;
+    font-size: 16px;
+    z-index: 1000;
+        }
+
+        .setting-item {
+    margin: 20px 0;
+    text-align: left;
+}
+
+.game-button {
+    position: fixed;
+    padding: 5px 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    z-index: 1000;
+}
+
+        #pauseButton {
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+ background-color: rgba(0, 0, 0, 0.25);
+        }
+        #menu, #endScreen, #themeSelector, #settings {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: #fff;
+    text-align: center;
+    display: none;
+}
+        button {
+    background-color: rgba(255, 255, 255, 0.2);
+            width: 100%;
+  	    padding: 10px 20px;
+            margin: 10px 0;
+            font-size: 16px;
+            font-family: 'Press Start 2P', cursive;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+		cursor: pointer;
+  	  transition: background-color 0.3s;
+        }
+        button:hover {
+ 	  background-color: rgba(255, 255, 255, 0.3);
+        }
+        #themeDropdown, #volumeSlider {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+            font-family: 'Press Start 2P', cursive;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+<div id="score">Score: 0</div>
+<button id="pauseButton" class="game-button">||</button>
+
+
+    <div id="menu">
+        <h2>Paused</h2>
+        <button id="resumeBtn">Resume</button>
+        <button id="musicToggleBtn">Toggle Music</button>
+        <button id="settingsBtn">Settings</button>
+        <button id="themeBtn">Change Theme</button>
+        <button id="exitBtn">Exit</button>
+    </div>
+
+    <div id="endScreen">
+        <h2>Game Over</h2>
+        <p id="finalScore"></p>
+        <button id="playAgainBtn">Play Again</button>
+        <button id="watchAdBtn">Watch Ad to Continue</button>
+        <button id="quitBtn">Quit</button>
+    </div>
+    
+    <div id="settings">
+        <h2>Settings</h2>
+        <div class="setting-item">
+            <label for="volumeSlider">Volume: <span id="volumeValue">100</span>%</label>
+            <input type="range" id="volumeSlider" min="0" max="100" value="100">
+        </div>
+        <div class="setting-item">
+            <label for="difficultySlider">Difficulty: <span id="difficultyValue">1</span></label>
+            <input type="range" id="difficultySlider" min="1" max="10" value="1" step="0.1">
+        </div>
+        <div class="setting-item">
+            <label for="playerPositionSlider">Player Position: <span id="playerPositionValue">0</span></label>
+            <input type="range" id="playerPositionSlider" min="-50" max="50" value="0">
+        </div>
+        <button id="closeSettingsBtn">Close</button>
+    </div>
+
+
+<script>
+function showSettings() {
+    settingsElement.style.display = 'block';
+    menuElement.style.display = 'none';
+}
+
+function updateVolume() {
+    const volume = volumeSlider.value;
+    volumeValue.textContent = volume;
+    if (backgroundMusic) {
+        backgroundMusic.volume = volume / 100;
+    }
+}
+
+volumeSlider.addEventListener('input', updateVolume);
+closeSettingsBtn.addEventListener('click', closeSettings);
+</script>
+
+    <div id="themeSelector">
+        <h2>Theme Selector</h2>
+        <select id="themeDropdown">
+            <option value="default">Default</option>
+            <option value="retro">Retro</option>
+            <option value="neon">Neon</option>
+            <option value="pastel">Pastel</option>
+            <option value="cyberpunk">Cyberpunk</option>
+        </select>
+        <button id="applyThemeBtn">Apply Theme</button>
+        <button id="closeThemeBtn">Close</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const pauseButton = document.getElementById('pauseButton');
+
+pauseButton.addEventListener('click', togglePause);
+
+function togglePause() {
+    if (gameState === 'playing') {
+        pauseGame();
+    } else if (gameState === 'paused') {
+        resumeGame();
+    }
+}
+        const menuElement = document.getElementById('menu');
+        const endScreenElement = document.getElementById('endScreen');
+        const finalScoreElement = document.getElementById('finalScore');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const musicToggleBtn = document.getElementById('musicToggleBtn');
+        const exitBtn = document.getElementById('exitBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const watchAdBtn = document.getElementById('watchAdBtn');
+        const quitBtn = document.getElementById('quitBtn');
+        const themeBtn = document.getElementById('themeBtn');
+        const themeSelector = document.getElementById('themeSelector');
+        const themeDropdown = document.getElementById('themeDropdown');
+        const applyThemeBtn = document.getElementById('applyThemeBtn');
+        const closeThemeBtn = document.getElementById('closeThemeBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+        const settingsElement = document.getElementById('settings');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const difficultySlider = document.getElementById('difficultySlider');
+        const difficultyValue = document.getElementById('difficultyValue');
+        const playerPositionSlider = document.getElementById('playerPositionSlider');
+        const playerPositionValue = document.getElementById('playerPositionValue');
+
+        settingsBtn.addEventListener('click', showSettings);
+
+
+        let player, obstacles, spaceships, stars, score, difficulty;
+        let gameState = 'playing';
+        let backgroundMusic;
+        let isMusicPlaying = true;
+
+        const gravity = -0.2;
+        const images = {};
+        const particleSystem = [];
+
+const themes = {
+    default: { bg: '#1a202c', player: '#4299E1', obstacle: '#F56565', text: '#FFFFFF', ui: '#2D3748' },
+    retro: { bg: '#143601', player: '#A2D149', obstacle: '#E86A92', text: '#FFFFFF', ui: '#3F4A21' },
+    neon: { bg: '#0D0221', player: '#FF00FF', obstacle: '#00FFFF', text: '#FFFFFF', ui: '#290849' },
+    pastel: { bg: '#FAF3DD', player: '#8CB369', obstacle: '#F4A259', text: '#000000', ui: '#E9E3C8' },
+    cyberpunk: { bg: '#372549', player: '#FB3640', obstacle: '#3BCEAC', text: '#FFFFFF', ui: '#5C3B6F' },
+};
+
+        let currentTheme = 'default';
+
+        function loadImage(name) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = `assets/${name}.png`;
+            });
+        }
+
+        async function loadAssets() {
+            const baseImageNames = ['alien', 'asteroid', 'satellite', 'spaceship', 'character', 'jetpack'];
+            for (const name of baseImageNames) {
+                images[name] = [await loadImage(name)];
+                // Load variants
+                for (let i = 1; i <= 3; i++) {
+                    try {
+                        const variantImage = await loadImage(`${name}0${i}`);
+                        images[name].push(variantImage);
+                    } catch (e) {
+                        // No more variants available
+                        break;
+                    }
+                }
+            }
+            backgroundMusic = new Audio('assets/background_music.mp3');
+            backgroundMusic.loop = true;
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            resetGame();
+        }
+
+        function initGame() {
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            pauseButton.addEventListener('click', pauseGame);
+            resumeBtn.addEventListener('click', resumeGame);
+            musicToggleBtn.addEventListener('click', toggleMusic);
+            exitBtn.addEventListener('click', exitGame);
+            playAgainBtn.addEventListener('click', resetGame);
+            watchAdBtn.addEventListener('click', watchAd);
+            quitBtn.addEventListener('click', exitGame);
+            themeBtn.addEventListener('click', showThemeSelector);
+            applyThemeBtn.addEventListener('click', applyTheme);
+            closeThemeBtn.addEventListener('click', closeThemeSelector);
+            volumeSlider.addEventListener('input', updateVolume);
+            closeSettingsBtn.addEventListener('click', closeSettings);
+
+            document.addEventListener('keydown', handleKeyDown);
+            canvas.addEventListener('click', handleClick);
+
+playAgainBtn.addEventListener('click', () => {
+    resetGame();
+    resumeGame();
+});
+
+            loadAssets().then(() => {
+                resetGame();
+                updateGame();
+                toggleMusic(); 
+            });
+        }
+
+let startTime;
+let elapsedTime;
+
+        function resetGame() {
+            const playerSize = Math.min(canvas.width, canvas.height) * 0.1;
+            player = {
+                x: 50,
+                y: canvas.height / 2,
+                width: playerSize,
+                height: playerSize,
+                speed: 5,
+                velocity: 0,
+                rotation: 0
+            };
+
+            obstacles = [];
+            spaceships = [];
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push(createStar());
+            }
+            score = 0;
+            difficulty = 1;
+            scoreElement.textContent = 'Score: 0';
+            gameState = 'playing';
+            endScreenElement.style.display = 'none';
+     
+   startTime = Date.now();
+    elapsedTime = 0;
+    updateScore();
+}
+
+
+function updateScore() {
+    if (gameState === 'playing') {
+        elapsedTime = Math.floor((Date.now() - startTime) / 100); // Changed from 1000 to 100
+        scoreElement.textContent = `Time: ${elapsedTime}`; // Removed 's' suffix as it's no longer seconds
+    }
+    requestAnimationFrame(updateScore);
+}
+
+let lastDifficultyIncrease = 0;
+
+function updateDifficulty() {
+    const difficultyIncreaseInterval = 10000; // 10 seconds
+    difficulty = parseFloat(difficultySlider.value);
+    difficultyValue.textContent = difficulty.toFixed(1);
+    if (elapsedTime - lastDifficultyIncrease > difficultyIncreaseInterval) {
+        difficulty += 0.1;
+        lastDifficultyIncrease = elapsedTime;
+    }
+}
+
+function updatePlayerPosition() {
+            const position = parseInt(playerPositionSlider.value);
+            playerPositionValue.textContent = position;
+            player.x = 100 + position; // Adjust base position as needed
+        }
+
+        difficultySlider.addEventListener('input', updateDifficulty);
+playerPositionSlider.addEventListener('input', updatePlayerPosition);
+
+        function createObstacle() {
+            const types = ['alien', 'asteroid', 'satellite'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const size = Math.min(canvas.width, canvas.height) * (0.05 + Math.random() * 0.05);
+            const variant = Math.floor(Math.random() * images[type].length);
+            const rotationSpeed = type === 'satellite' ? (Math.random() - 0.5) * 0.02 : 0;
+            const speed = (2 + Math.random() * 3) * difficulty;
+            return {
+                x: canvas.width,
+                y: Math.random() * (canvas.height - size),
+                width: size,
+                height: size,
+                speed: 2 + Math.random() * 3,
+                type: type,
+                variant: variant,
+                rotation: type === 'asteroid' ? Math.random() * Math.PI * 2 : 0,
+                rotationSpeed: type === 'asteroid' ? (Math.random() - 0.5) * 0.05 : 0
+            };
+        }
+
+        function createSpaceship() {
+            const size = Math.min(canvas.width, canvas.height) * 0.1;
+            const variant = Math.floor(Math.random() * images.spaceship.length);
+            return {
+                x: canvas.width,
+                y: Math.random() * (canvas.height - size),
+                width: size,
+                height: size,
+                speed: 1 + Math.random() * 2,
+                variant: variant,
+                opacity: 1
+            };
+        }
+
+        function createStar() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                speed: 0.5 + Math.random()
+            };
+        }
+
+        function createParticle() {
+            const jetpackOffset = player.width * 0.3;
+            const colors = ['#FF4500', '#FFA500', '#FFD700', '#FFFFFF'];
+            return {
+                x: player.x + jetpackOffset,
+                y: player.y + player.height - 20,
+                size: Math.random() * 5 + 2,
+                speed: Math.random() * 2 + 1,
+                life: Math.random() * 30 + 20,
+                colorIndex: 0,
+                colors: colors,
+                opacity: 1
+            };
+        }
+
+        function updateParticles() {
+            for (let i = particleSystem.length - 1; i >= 0; i--) {
+                const particle = particleSystem[i];
+                particle.y += particle.speed;
+                particle.x += (Math.random() - 0.5) * 2;
+                particle.life--;
+                particle.opacity = particle.life / 50;
+                particle.size *= 0.97;
+                particle.colorIndex = Math.min(Math.floor((1 - particle.life / 50) * particle.colors.length), particle.colors.length - 1);
+                if (particle.life <= 0) {
+                    particleSystem.splice(i, 1);
+                }
+            }
+            if (player.velocity > 0) {
+                for (let i = 0; i < 15; i++) {
+                    particleSystem.push(createParticle());
+                }
+            }
+        }
+
+        function updateGame() {
+          if (gameState !== 'playing') return;
+
+            ctx.fillStyle = themes[currentTheme].bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            updateStars();
+            updateSpaceships();
+            updatePlayer();
+            updateObstacles();
+            updateParticles();
+
+            drawStars();
+            drawSpaceships();
+            drawPlayer();
+            drawObstacles();
+            drawParticles();
+
+            difficulty = 1 + Math.floor(score / 10) * 0.1;
+
+            updateDifficulty();
+
+        if (Math.random() < 0.02 * difficulty) {
+            obstacles.push(createObstacle());
+            }
+
+            if (Math.random() < 0.02 * difficulty) {
+                obstacles.push(createObstacle());
+            }
+
+            if (Math.random() < 0.005) {
+                spaceships.push(createSpaceship());
+            }
+
+            ensurePassableGaps();
+
+            requestAnimationFrame(updateGame);
+        }
+
+        function ensurePassableGaps() {
+            const gapSize = player.height * 2;
+            const numGaps = Math.max(1, Math.floor(3 - difficulty * 0.2));
+            const minGapSize = 10; 
+
+            if (obstacles.length < 2) return;
+
+    obstacles.sort((a, b) => a.x - b.x);
+
+    for (let i = 1; i < obstacles.length; i++) {
+        const prevObstacle = obstacles[i - 1];
+        const currentObstacle = obstacles[i];
+        const gap = currentObstacle.x - (prevObstacle.x + prevObstacle.width);
+
+        if (gap < minGapSize) {
+            currentObstacle.x = prevObstacle.x + prevObstacle.width + minGapSize;
+        }
+            
+            obstacles.forEach(obstacle => {
+                if (!obstacle.targetY) {
+                    obstacle.targetY = obstacle.y;
+                }
+                obstacle.y += (obstacle.targetY - obstacle.y) * 0.1;
+            });
+            
+            if (obstacles.length > 0 && obstacles[obstacles.length - 1].x < canvas.width) {
+                const lastX = obstacles.length > 0 ? obstacles[obstacles.length - 1].x : canvas.width;
+                for (let i = 0; i < numGaps; i++) {
+                    const gapY = Math.random() * (canvas.height - gapSize);
+                    const newObstacle1 = createObstacle();
+                    newObstacle1.x = lastX + canvas.width * 0.3 + Math.random() * canvas.width * 0.2;
+                    newObstacle1.targetY = Math.max(0, gapY - newObstacle1.height);
+                    const newObstacle2 = createObstacle();
+                    newObstacle2.x = newObstacle1.x;
+                    newObstacle2.targetY = Math.min(canvas.height - newObstacle2.height, gapY + gapSize);
+                    obstacles.push(newObstacle1, newObstacle2);
+                }
+            } }
+        }
+
+        function updateStars() {
+            stars.forEach(star => {
+                star.x -= star.speed;
+                if (star.x < 0) star.x = canvas.width;
+            });
+        }
+
+        function updateSpaceships() {
+    spaceships.forEach((ship, index) => {
+        ship.x -= ship.speed;
+        ship.opacity = Math.max(0, ship.x / canvas.width);
+        if (ship.x + ship.width < 0) {
+            spaceships.splice(index, 1);
+        }
+    });
+}
+
+function updatePlayer() {
+    player.velocity += gravity;
+    player.y -= player.velocity;
+    player.rotation = Math.sin(Date.now() * 0.01) * 0.1;
+
+    if (player.y < 0) {
+        player.y = 0;
+        player.velocity = 0;
+    } else if (player.y + player.height > canvas.height) {
+        player.y = canvas.height - player.height;
+        player.velocity = 0;
+    }
+}
+
+function updateObstacles() {
+    obstacles.forEach((obstacle, index) => {
+                obstacle.x -= obstacle.speed * difficulty;
+                
+                if (obstacle.type === 'satellite') {
+                    obstacle.rotation += obstacle.rotationSpeed;
+                }
+                
+                else if (obstacle.type === 'asteroid') {
+                    obstacle.rotation += obstacle.rotationSpeed;
+                }
+
+
+                if (checkCollision(player, obstacle)) {
+                    gameOver();
+                    return;
+                }
+
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(index, 1);
+                    score++;
+                    scoreElement.textContent = 'Score: ' + score;
+                }
+            });
+}
+
+function checkCollision(player, obstacle) {
+    const playerCenterX = player.x + player.width / 2;
+    const playerCenterY = player.y + player.height / 2;
+    const obstacleCenterX = obstacle.x + obstacle.width / 2;
+    const obstacleCenterY = obstacle.y + obstacle.height / 2;
+
+    const dx = playerCenterX - obstacleCenterX;
+    const dy = playerCenterY - obstacleCenterY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    const minDistance = (player.width + obstacle.width) / 2 * 0.8;
+
+    return distance < minDistance;
+}
+
+function drawStars() {
+    ctx.fillStyle = 'white';
+    stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function drawSpaceships() {
+    spaceships.forEach(ship => {
+        ctx.globalAlpha = ship.opacity;
+        ctx.drawImage(images.spaceship[ship.variant], ship.x, ship.y, ship.width, ship.height);
+    });
+    ctx.globalAlpha = 1;
+}
+
+function drawPlayer() {
+    ctx.save();
+    ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+    ctx.rotate(player.rotation);
+    
+    // Draw character
+    ctx.drawImage(images.character[0], -player.width / 2, -player.height / 2, player.width, player.height);
+    
+    // Draw jetpack
+    const jetpackWidth = player.width * 0.8;
+    const jetpackHeight = player.height * 0.8;
+    const jetpackX = -player.width / 2 - jetpackWidth * 0.1;
+    const jetpackY = -player.height / 1.5 + (player.height - jetpackHeight) / 2;
+    
+    ctx.drawImage(images.jetpack[0], jetpackX, jetpackY, jetpackWidth, jetpackHeight);
+    
+    ctx.restore();
+}
+
+function drawObstacles() {
+    obstacles.forEach(obstacle => {
+        ctx.save();
+        ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
+        ctx.rotate(obstacle.rotation);
+        ctx.drawImage(images[obstacle.type][obstacle.variant], -obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+        ctx.restore();
+    });
+}
+
+function drawParticles() {
+    for (const particle of particleSystem) {
+        ctx.globalAlpha = particle.opacity;
+        ctx.fillStyle = particle.colors[particle.colorIndex];
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+
+
+function gameOver() {
+    gameState = 'ended';
+    finalScoreElement.textContent = `Final Time: ${elapsedTime}`;
+    endScreenElement.style.display = 'block';
+}
+
+function handleKeyDown(event) {
+    if (event.code === 'Space') {
+        if (gameState === 'playing') {
+            player.velocity = 5;
+        } else if (gameState === 'paused') {
+            resumeGame();
+        }
+    } else if (event.code === 'Escape') {
+        if (gameState === 'playing') {
+            pauseGame();
+        } else if (gameState === 'paused') {
+            resumeGame();
+        }
+    }
+}
+
+function handleClick() {
+    if (gameState === 'playing') {
+        player.velocity = 5;
+    }
+}
+
+function pauseGame() {
+    gameState = 'paused';
+    menuElement.style.display = 'block';
+    pauseButton.textContent = '▶';
+}
+
+function resumeGame() {
+    gameState = 'playing';
+    menuElement.style.display = 'none';
+    settingsElement.style.display = 'none';
+    themeSelector.style.display = 'none';
+    pauseButton.textContent = '👀';
+    updateGame();
+}
+
+function toggleMusic() {
+    if (isMusicPlaying) {
+        backgroundMusic.pause();
+        isMusicPlaying = false;
+        musicToggleBtn.textContent = 'Play Music';
+    } else {
+        backgroundMusic.play();
+        isMusicPlaying = true;
+        musicToggleBtn.textContent = 'Stop Music';
+    }
+}
+
+function exitGame() {
+    if (confirm('Are you sure you want to exit the game?')) {
+        location.reload();
+    }
+}
+
+function watchAd() {
+    // Show ad here (you'd need to implement the actual ad display logic)
+    alert('Ad watched. Continuing game.');
+    resetGame();
+    resumeGame();
+}
+function showSettings() {
+            settingsElement.style.display = 'block';
+            menuElement.style.display = 'none';
+        }
+
+function closeSettings() {
+    settingsElement.style.display = 'none';
+    menuElement.style.display = 'block';
+}
+
+function updateVolume() {
+    const volume = volumeSlider.value;
+    volumeValue.textContent = volume;
+    if (backgroundMusic) {
+        backgroundMusic.volume = volume / 100;
+    }
+}
+
+function showThemeSelector() {
+    themeSelector.style.display = 'block';
+    menuElement.style.display = 'none';
+}
+
+function closeThemeSelector() {
+    themeSelector.style.display = 'none';
+    menuElement.style.display = 'block';
+}
+
+function applyTheme() {
+    currentTheme = themeDropdown.value;
+    const theme = themes[currentTheme];
+    document.body.style.backgroundColor = theme.bg;
+    canvas.style.backgroundColor = theme.bg;
+    document.body.style.color = theme.text;
+    
+    // Update UI elements
+    const uiElements = document.querySelectorAll('#menu, #endScreen, #themeSelector, #settings');
+    uiElements.forEach(el => {
+        el.style.backgroundColor = theme.ui;
+        el.style.color = theme.text;
+    });
+    
+    const buttons = document.querySelectorAll('button:not(#pauseButton)');
+    buttons.forEach(btn => {
+        btn.style.backgroundColor = theme.player;
+        btn.style.color = theme.text;
+    });
+    
+    closeThemeSelector();
+}
+
+initGame();
+    </script>
+
+</body>
+</html>
